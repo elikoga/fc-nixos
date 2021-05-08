@@ -38,8 +38,6 @@
       export NIX_REMOTE=daemon
     '';
 
-    networking.hostName = "ct-dir-dev";
-
     services.postgresql.settings.listen_addresses = lib.mkOverride 20 "0.0.0.0,::";
 
     services.mysql.extraOptions= ''
