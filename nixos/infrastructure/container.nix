@@ -5,17 +5,20 @@
 
     boot.isContainer = true;
 
-    networking.firewall.allowedTCPPorts = [ 80 ];
-    networking.firewall.allowPing = true;
-    # XXX switch to non-mkforce after releasing network.nix with mkPlatform
-    networking.useDHCP = lib.mkForce false;  
+    networking = {
+      hostName = config.fclib.mkPlatform (attrByPath [ "name" ] "default" cfg.enc);
 
-    services.telegraf.enable = false;
+      # XXX switch to non-mkforce after releasing network.nix with mkPlatform
+      useDHCP = lib.mkForce false;  
+
+      firewall.allowedTCPPorts = [ 80 ];
+      firewall.allowPing = true;
+    };
+
     flyingcircus.agent.enable = false;
 
     services.timesyncd.servers = [ "pool.ntp.org" ];
-
-    users.users.root.password = "";
+    services.telegraf.enable = false;
 
     systemd.services."network-addresses-ethsrv" = {
       wantedBy = [ "multi-user.target" ];
@@ -67,6 +70,8 @@
     # -----END OPENSSH PRIVATE KEY-----
 
     # ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGc7V2c2zFPRMl8/gmBv1/MEldEuJau8jHjhx+2qziYs root@ct-dir-dev2
+
+    users.users.root.password = "";
 
     users.groups = {
       login = { };
