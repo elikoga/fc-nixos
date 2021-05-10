@@ -68,37 +68,32 @@
 
     # ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGc7V2c2zFPRMl8/gmBv1/MEldEuJau8jHjhx+2qziYs root@ct-dir-dev2
 
-    flyingcircus.users.permissions = [
-      {
-       description = "commit to VCS repository";
-       id = 2029;
-       name = "code";
-      }
-      {
-       description = "perform interactive or web logins (e.g., ssh, monitoring)";
-       id = 502;
-       name = "login";
-      }
-      {
-       description = "access web statistics";
-       id = 2046;
-       name = "stats";
-      }
-      {
-       description = "sudo to service user";
-       id = 2028;
-       name = "sudo-srv";
-      }
-      {
-       description = "sudo to root";
-       id = 10;
-       name = "wheel";
-      }
-      {
-       description = "Manage users of RG";
-       id = 2272;
-       name = "manager";
-      }
-    ];
+    users.groups = {
+      login = { };
+      service = { };
+      sudo-srv = {};
+      admins = {};
+    };
+
+    users.users.developer = {
+      description = "developer user";
+      group = "users";
+      extraGroups = [ "login" "sudo-srv" "admins" ];
+      # password: vagrant
+      hashedPassword = "$5$xS9kX8R5VNC0g$ZS7QkUYTk/61dUyUgq9r0jLAX1NbiScBT5v1PODz4UC";
+      home = "/home/developer";
+      isNormalUser = true;
+      openssh.authorizedKeys.keys = [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGc7V2c2zFPRMl8/gmBv1/MEldEuJau8jHjhx+2qziYs fc-nixos insecure public key"
+      ];
+    };
+
+    users.users.s-dev = {
+      description = "A service user for development";
+      home = "/srv/s-dev/";
+      isNormalUser = true;
+      extraGroups = [ "service" ];
+    };
+
   };
 }
