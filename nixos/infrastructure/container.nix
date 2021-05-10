@@ -30,9 +30,7 @@
       };
     };
 
-    environment.shellInit = ''
-      export NIX_REMOTE=daemon
-    '';
+    environment.sessionVariables = { NIX_REMOTE = "daemon"; };
 
     services.postgresql.settings.listen_addresses = lib.mkOverride 20 "0.0.0.0,::";
 
@@ -107,6 +105,11 @@
       isNormalUser = true;
       extraGroups = [ "service" ];
     };
+
+    system.activationScripts.relaxHomePermissions = lib.stringBefore [ "relaxHomePermissions" ] ''
+      mkdir -p /nix/var/nix/profiles/per-user/s-dev
+      chown s-dev: /nix/var/nix/profiles/per-user/s-dev
+    '';
 
   };
 }
