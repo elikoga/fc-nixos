@@ -6,7 +6,7 @@
     boot.isContainer = true;
 
     networking = {
-      hostName = config.fclib.mkPlatform (attrByPath [ "name" ] "default" cfg.enc);
+      hostName = config.fclib.mkPlatform cfg.enc.name;
 
       # XXX switch to non-mkforce after releasing network.nix with mkPlatform
       useDHCP = lib.mkForce false;  
