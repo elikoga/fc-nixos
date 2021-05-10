@@ -8,8 +8,7 @@
     networking = {
       hostName = config.fclib.mkPlatform config.flyingcircus.enc.name;
 
-      # XXX switch to non-mkforce after releasing network.nix with mkPlatform
-      useDHCP = lib.mkForce false;  
+      useDHCP = false;  
 
       firewall.allowedTCPPorts = [ 80 ];
       firewall.allowPing = true;
