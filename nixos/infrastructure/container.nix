@@ -83,7 +83,9 @@
     users.users.developer = {
       description = "developer user";
       group = "users";
-      extraGroups = [ "login" "sudo-srv" "admins" ];
+      # Make the human user a service user, too so that we can place stuff in
+      # /etc/local/nixos for provisioning.
+      extraGroups = [ "login" "sudo-srv" "admins" "service" ];
       # password: vagrant
       hashedPassword = "$5$xS9kX8R5VNC0g$ZS7QkUYTk/61dUyUgq9r0jLAX1NbiScBT5v1PODz4UC";
       home = "/home/developer";
