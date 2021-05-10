@@ -3,12 +3,12 @@
 {
   config = lib.mkIf (config.flyingcircus.infrastructureModule == "container") {
 
+    boot.isContainer = true;
+
     networking.firewall.allowedTCPPorts = [ 80 ];
     networking.firewall.allowPing = true;
+    networking.useDHCP = false;
 
-    boot.isContainer = true;
-    boot.useDHCP = false;
-    
     services.telegraf.enable = false;
     flyingcircus.agent.enable = false;
 
