@@ -106,7 +106,7 @@
       extraGroups = [ "service" ];
     };
 
-    system.activationScripts.relaxHomePermissions = lib.stringBefore [ "relaxHomePermissions" ] ''
+    system.activationScripts.relaxHomePermissions = lib.stringAfter [ "users" ] ''
       mkdir -p /nix/var/nix/profiles/per-user/s-dev
       chown s-dev: /nix/var/nix/profiles/per-user/s-dev
     '';
