@@ -7,7 +7,8 @@
 
     networking.firewall.allowedTCPPorts = [ 80 ];
     networking.firewall.allowPing = true;
-    networking.useDHCP = false;
+    # XXX switch to non-mkforce after releasing network.nix with mkPlatform
+    networking.useDHCP = lib.mkForce false;  
 
     services.telegraf.enable = false;
     flyingcircus.agent.enable = false;
