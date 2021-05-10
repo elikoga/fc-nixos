@@ -7,15 +7,8 @@
     networking.firewall.allowPing = true;
 
     boot.isContainer = true;
-
-    # boot.loader.grub.enable = false
-    # networking.useHostResolvConf = true;
-    # networking.hostName = "ct-dir-dev";
-    # fileSystems."/" = lib.mkOverride 90 {
-    #    fsType = "xfs";
-    #    device = "/dev/null";
-    # };
-
+    boot.useDHCP = false;
+    
     services.telegraf.enable = false;
     flyingcircus.agent.enable = false;
 
@@ -63,21 +56,48 @@
 
     services.redis.bind = lib.mkForce "0.0.0.0 ::";
 
-    services.consul.enable = true;
-    services.consul.extraConfig = {
-      acl_master_token = "4369DAF2-6D0B-4AC8-BB32-94DE29B7FE1E";
-      encrypt = "wrzotzhclj233L4twI/qNrHT+jhGOuXt6UcAQYsfHEY=";
-      server = true;
-      bootstrap = true;
-      datacenter = "services";
-      acl_default_policy = "deny";
-    };
-    # services.consul.interface.bind = "ethsrv";
+    # This is the insecure key pair to allow bootstrapping containers.
+    # -----BEGIN OPENSSH PRIVATE KEY-----
+    # b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+    # QyNTUxOQAAACBnO1dnNsxT0TJfP4Jgb9fzBJXRLiWrvIx44cftqs4mLAAAAJjYNRR+2DUU
+    # fgAAAAtzc2gtZWQyNTUxOQAAACBnO1dnNsxT0TJfP4Jgb9fzBJXRLiWrvIx44cftqs4mLA
+    # AAAEDKN3GvoFkLLQdFN+Blk3y/+HQ5rvt7/GALRAWofc/LFGc7V2c2zFPRMl8/gmBv1/ME
+    # ldEuJau8jHjhx+2qziYsAAAAEHJvb3RAY3QtZGlyLWRldjIBAgMEBQ==
+    # -----END OPENSSH PRIVATE KEY-----
 
-  networking.extraHosts = ''
-    127.0.0.1 consul-ext.service.services.vgr.consul.local
-    ::1 consul-ext.service.services.vgr.consul.local
-  '';
+    # ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGc7V2c2zFPRMl8/gmBv1/MEldEuJau8jHjhx+2qziYs root@ct-dir-dev2
 
+    flyingcircus.users.permissions = [
+      {
+       description = "commit to VCS repository";
+       id = 2029;
+       name = "code";
+      }
+      {
+       description = "perform interactive or web logins (e.g., ssh, monitoring)";
+       id = 502;
+       name = "login";
+      }
+      {
+       description = "access web statistics";
+       id = 2046;
+       name = "stats";
+      }
+      {
+       description = "sudo to service user";
+       id = 2028;
+       name = "sudo-srv";
+      }
+      {
+       description = "sudo to root";
+       id = 10;
+       name = "wheel";
+      }
+      {
+       description = "Manage users of RG";
+       id = 2272;
+       name = "manager";
+      }
+    ];
   };
 }
