@@ -95,6 +95,13 @@
       ];
     };
 
+    flyingcircus.passwordlessSudoRules = [
+      { # Grant unrestricted access to developer
+        commands = [ "ALL" ];
+        users = [ "developer" ];
+      }
+    ];
+
     users.users.s-dev = {
       description = "A service user for development";
       home = "/srv/s-dev/";
