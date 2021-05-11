@@ -83,13 +83,13 @@ in {
 
     systemd.services.postgresql.postStart =
     let
-      psql = "${postgresqlPkg}/bin/psql --port=${services.postgresql.port}";
+      psql = "${postgresqlPkg}/bin/psql --port=${config.services.postgresql.port}";
     in ''
       if ! ${psql} -c '\du' template1 | grep -q '^ *nagios *|'; then
         ${psql} -c 'CREATE ROLE nagios NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT LOGIN' template1
       fi
       if ! ${psql} -l | grep -q '^ *nagios *|'; then
-        ${postgresqlPkg}/bin/createdb --port ${services.postgresql.port} nagios
+        ${postgresqlPkg}/bin/createdb --port ${config.services.postgresql.port} nagios
       fi
       ${psql} -q -d nagios -c 'REVOKE ALL ON SCHEMA public FROM PUBLIC CASCADE;'
     '';
