@@ -89,6 +89,7 @@
         home_directory = "/srv/s-dev";
         id = 1001;
         login_shell = "/bin/bash";
+        password = "*";
         name = "s-dev";
         ssh_pubkey = [] ;
         permissions = { container = []; }; 
