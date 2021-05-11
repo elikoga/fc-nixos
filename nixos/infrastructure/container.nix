@@ -91,6 +91,7 @@
         login_shell = "/bin/bash";
         name = "s-dev";
         ssh_pubkey = [] ;
+        permissions = { container = []; }; 
         uid = "s-dev"; } ];
 
     flyingcircus.users.permissions = [
