@@ -70,26 +70,55 @@
 
     users.users.root.password = "";
 
-    users.groups = {
-      login = { };
-      service = { };
-      sudo-srv = {};
-      admins = {};
-    };
+    flyingcircus.users.userData = [
+      { class = "human";
+        gid = 100;
+        home_directory = "/home/developer";
+        id = 1000;
+        login_shell = "/bin/bash";
+        name = "Developer";
+        # password: vagrant
+        password = "$5$xS9kX8R5VNC0g$ZS7QkUYTk/61dUyUgq9r0jLAX1NbiScBT5v1PODz4UC";
+        permissions = { container = [ "admins" "login" "manager" "sudo-srv" ]; };
+        ssh_pubkey = [
+         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGc7V2c2zFPRMl8/gmBv1/MEldEuJau8jHjhx+2qziYs root@ct-dir-dev2"
+        ];
+        uid = "developer";}
+      { class = "service";
+        gid = 100;
+        home_directory = "/srv/s-dev";
+        id = 1001;
+        login_shell = "/bin/bash";
+        name = "s-dev";
+        uid = "s-dev"; } ];
+
+    flyingcircus.users.permissions = [
+      { description = "commit to VCS repository";
+        id = 2029;
+        name = "code"; }
+      { description = "perform interactive or web logins (e.g., ssh, monitoring)";
+        id = 502;
+        name = "login"; }
+      { description = "access web statistics";
+        id = 2046;
+        name = "stats"; }
+      { description = "sudo to service user";
+        id = 2028;
+        name = "sudo-srv"; }
+      { description = "sudo to root";
+        id = 10;
+        name = "wheel"; }
+      { description = "Manage users of RG";
+        id = 2272;
+        name = "manager"; } ];
+
+    flyingcircus.users.adminsGroup = {
+       gid = 2003; name = "admins"; technical_contacts = []; };
 
     users.users.developer = {
-      description = "developer user";
-      group = "users";
       # Make the human user a service user, too so that we can place stuff in
       # /etc/local/nixos for provisioning.
-      extraGroups = [ "login" "sudo-srv" "admins" "service" ];
-      # password: vagrant
-      hashedPassword = "$5$xS9kX8R5VNC0g$ZS7QkUYTk/61dUyUgq9r0jLAX1NbiScBT5v1PODz4UC";
-      home = "/home/developer";
-      isNormalUser = true;
-      openssh.authorizedKeys.keys = [
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGc7V2c2zFPRMl8/gmBv1/MEldEuJau8jHjhx+2qziYs fc-nixos insecure public key"
-      ];
+      extraGroups = [ "service" ];
     };
 
     flyingcircus.passwordlessSudoRules = [
@@ -98,13 +127,6 @@
         users = [ "developer" ];
       }
     ];
-
-    users.users.s-dev = {
-      description = "A service user for development";
-      home = "/srv/s-dev/";
-      isNormalUser = true;
-      extraGroups = [ "service" ];
-    };
 
     system.activationScripts.relaxHomePermissions = lib.stringAfter [ "users" ] ''
       mkdir -p /nix/var/nix/profiles/per-user/s-dev
