@@ -218,33 +218,7 @@ in {
     };
   };
 
-  config = mkIf cfg.enable {
-
-    environment.etc."local/sensu-client/README.txt".text = ''
-      Put local sensu checks here.
-
-      This directory is passed to sensu as additional config directory. You
-      can add .json files for your checks.
-
-      Example:
-
-        {
-         "checks" : {
-            "my-custom-check" : {
-               "notification" : "custom check broken",
-               "command" : "/srv/user/bin/nagios_compatible_check",
-               "interval": 60,
-               "standalone" : true
-            },
-            "my-other-custom-check" : {
-               "notification" : "custom check broken",
-               "command" : "/srv/user/bin/nagios_compatible_other_check",
-               "interval": 600,
-               "standalone" : true
-            }
-          }
-        }
-    '';
+  config = (mkIf cfg.enable {
 
     environment.systemPackages = [
       sensuCheckEnvCmd
@@ -277,11 +251,6 @@ in {
         fi
         unset sensu_json_present
       '';
-    };
-
-    flyingcircus.localConfigDirs.sensu-client = {
-      dir = "/etc/local/sensu-client";
-      user = "sensuclient";
     };
 
     flyingcircus.services.sensu-client.checkEnvPackages = with pkgs; [
@@ -332,18 +301,6 @@ in {
     systemd.tmpfiles.rules = [
       "d /var/tmp/sensu 0775 sensuclient service"
     ];
-
-    users.groups.sensuclient.gid = config.ids.gids.sensuclient;
-
-    users.users.sensuclient = {
-      description = "sensu client daemon user";
-      uid = config.ids.uids.sensuclient;
-      group = "sensuclient";
-      # Allow sensuclient to interact with services, adm stuff and the journal.
-      # This especially helps to check supervisor with a group-writable
-      # socket:
-      extraGroups = [ "service" "adm" "systemd-journal" ];
-    };
 
     flyingcircus.services.sensu-client.checks = with pkgs;
     let
@@ -475,6 +432,53 @@ in {
         command = "${fc.check-age}/bin/check_age -m /lost+found -w 2h -c 1d";
         interval = 300;
       };
+    };
+
+  }) // {
+    # Config that should always be available to allow deployments to 
+    # succeed even if no real sensu environment is available.
+
+    environment.etc."local/sensu-client/README.txt".text = ''
+      Put local sensu checks here.
+
+      This directory is passed to sensu as additional config directory. You
+      can add .json files for your checks.
+
+      Example:
+
+        {
+         "checks" : {
+            "my-custom-check" : {
+               "notification" : "custom check broken",
+               "command" : "/srv/user/bin/nagios_compatible_check",
+               "interval": 60,
+               "standalone" : true
+            },
+            "my-other-custom-check" : {
+               "notification" : "custom check broken",
+               "command" : "/srv/user/bin/nagios_compatible_other_check",
+               "interval": 600,
+               "standalone" : true
+            }
+          }
+        }
+    '';
+
+    flyingcircus.localConfigDirs.sensu-client = {
+      dir = "/etc/local/sensu-client";
+      user = "sensuclient";
+    };
+
+    users.groups.sensuclient.gid = config.ids.gids.sensuclient;
+
+    users.users.sensuclient = {
+      description = "sensu client daemon user";
+      uid = config.ids.uids.sensuclient;
+      group = "sensuclient";
+      # Allow sensuclient to interact with services, adm stuff and the journal.
+      # This especially helps to check supervisor with a group-writable
+      # socket:
+      extraGroups = [ "service" "adm" "systemd-journal" ];
     };
 
   };
