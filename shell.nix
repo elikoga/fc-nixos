@@ -1,4 +1,6 @@
 { pkgs ? import <nixpkgs> {} }:
-  pkgs.mkShell {
-    shellHook = (builtins.readFile ./dev-setup);
+let
+  dev-setup = (builtins.readFile ./dev-setup);
+in pkgs.mkShell {
+  shellHook = "eval $(${dev-setup})";
 }
