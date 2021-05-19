@@ -3,33 +3,94 @@
 with builtins;
 
 let
-  cfg = lib.debug.traceValSeq config.flyingcircus.services.haproxy;
+  defaultCfg = { 
+    global = {  
+      daemon = true;  
+      chroot = "/var/empty";  
+      user = "haproxy";  
+      group = "haproxy";  
+      maxconn = "4096";  
+      log = "localhost local2";      
+      "tune.bufsize" = "131072";  
+      "tune.maxrewrite" = "65536";  
+    };  
+    defaults = {  
+      mode = "http";  
+      log = "global";  
+      option = [   
+        "httplog"   
+        "dontlognull"  
+        "http-server-close"  
+      ];  
+      timeout = [  
+        "connect 5s"  
+        "client 10m"  
+        "server 10m"  
+        "queue 25s"  
+      ];  
+      balance = "leastconn";  
+    };  
+    proxies = {  
+      "http-in" = {   
+        section = "listen";  
+        bind = [  
+          "127.0.0.1:8002"  
+          "::1:8002"  
+        ];  
+        default_backend = "be";  
+      };  
+      "be" = {  
+        section = "backend";  
+        server = "localhost localhost:8080";  
+      };  
+    };  
+  };  
+  cfg = config.flyingcircus.services.haproxy;
   fclib = config.fclib;
 
-  generatedConfig = lib.debug.traceValSeq (if cfg ? global
-  then with cfg; "global\n" + 
-    (if global ? daemon then "daemon\n" else "") +
-    (if global ? chroot then "chroot ${global.chroot}\n" else "") +
-    (if global ? user && global.group != null then "user ${global.user}" else "") +
-    (if global ? group && global.group != null then "group ${global.group}" else "") +
-    (if global ? maxconn then "maxconn ${toString global.maxconn}\n" else "") +
-    (if global ? log then "log ${global.log.address} ${global.log.facility}\n" else "") +
-    (if global ? tune then with global; (
-      (if tune ? bufsize then "tune.bufsize ${toString tune.bufsize}\n" else "") +
-      (if tune ? maxrewrite then "tune.bumaxrewritefsize ${toString tune.maxrewrite}\n" else "")
-    ) else "")
-  else "");
+  indentWith = spaces: str: let 
+      linesListInterspersed = builtins.split "\n" str;
+      lines = filter (x: (typeOf x) != "list") linesListInterspersed;
+      indentedLines = map (x: spaces + x) lines;
+      unlines = concatStringsSep "\n" indentedLines;
+    in unlines;
+
+  generatedConfig = with lib.attrsets; (concatStringsSep "\n" [
+    "global"
+    (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
+      if (typeOf value) == "bool"
+      then "${key}"
+      else "${key} ${value}"
+    )) cfg.global)))
+    "defaults"
+    (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
+      if (typeOf value) == "string"
+      then "${key} ${value}"
+      else (concatStringsSep "\n" (map (x: "${key} ${x}") value))
+    )) cfg.defaults)))
+    "# proxies"
+    (concatStringsSep "\n" (mapAttrsToList (proxyName: proxyData: (
+      "${proxyData.section} ${proxyName}\n" +
+      (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
+        if key != "section"
+        then (if (typeOf value) == "string"
+          then "${key} ${value}"
+          else (concatStringsSep "\n" (map (x: "${key} ${x}") value)))
+        else ""
+      )) proxyData)))
+    )) cfg.proxies))
+  ]);
 
   haproxyCfg = pkgs.writeText "haproxy.conf" config.services.haproxy.config;
 
-  configFiles = filter (p: lib.hasSuffix ".cfg" p) (fclib.files /etc/local/haproxy);
+  configFiles = filter (lib.hasSuffix ".cfg") (fclib.files /etc/local/haproxy);
 
   # This was included in our old example config. Breaks on 20.09 because HAProxy
   # isn't allowed to write to /run/ anymore and is unneeded because a stats socket
   # is added by the NixOS module automatically.
   oldStatsLine = "stats socket /run/haproxy_admin.sock mode 660 group nogroup level operator";
 
-  importedCfgContent = concatStringsSep "\n" (map readFile configFiles);
+  importedCfgContent = concatStringsSep "\n" ([generatedConfig] ++ map readFile configFiles);
   modifiedCfgContent =
     replaceStrings
       [ oldStatsLine ]
@@ -81,67 +142,13 @@ in
   options = with lib; with types; {
     flyingcircus.services.haproxy = {
       enable = mkEnableOption "FC-customized HAproxy";
-      global = mkOption {
-        default = {
-          daemon = true;
-          chroot = "/var/empty";
-          maxconn = 4096;
-          log = {
-            address = "localhost";
-            facility = "local2";
-          };
-        };
-        type = submodule {
-          options = {
-            daemon = mkOption {
-              type = bool;
-            };
-            chroot = mkOption {
-              type = path;
-            };
-            user = mkOption {
-              default = null;
-              type = nullOr str;
-            };
-            group = mkOption {
-              default = null;
-              type = nullOr str;
-            };
-            maxconn = mkOption {
-              type = int;
-            };
-            log = mkOption {
-              type = submodule {
-                options = {
-                  address = mkOption {
-                    type = str;
-                  };
-                  facility = mkOption {
-                    type = str;
-                  };
-                };
-              };
-            };
-            tune = mkOption {
-              default = null;
-              type = nullOr (submodule {
-                options = {
-                  bufsize = mkOption {
-                    type = int;
-                  };
-                  maxrewrite = mkOption {
-                    type = int;
-                  };
-                };
-              });
-            };
-          };
-        };
-      };
-    };
+    } // (import ./config-options.nix { inherit lib; });
   };
 
   config = lib.mkMerge [
+    (lib.mkIf cfg.enable {
+      flyingcircus.services.haproxy = defaultCfg;
+    })
     (lib.mkIf cfg.enable {
 
       environment.etc = {
@@ -182,7 +189,7 @@ in
 
       services.haproxy.enable = true;
       services.haproxy.config =
-        seq generatedConfig (if configFiles == [] then example else haproxyCfgContent);
+        seq generatedConfig (if configFiles == [] then generatedConfig else haproxyCfgContent);
 
       systemd.services.haproxy = {
         reloadIfChanged = true;
