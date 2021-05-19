@@ -41,6 +41,20 @@ let
       unlines = concatStringsSep "\n" indentedLines;
     in unlines;
 
+changes  # This function is pretty complicated but still readable if you're used to functional programming:
+  # concatStringsSep "\n" :: [String] -> String
+  # which is effectively `unlines` from Haskell
+  # concats strings in list with newlines
+  #
+  # indentWith indents a block of text with the first parameter
+  # indentWith :: String -> String -> String
+  # ```haskell
+  # indentWith spaces = unlines . (spaces ++) . lines
+  # ```
+  #
+  # From https://nixos.org/manual/nixpkgs/ :
+  # mapAttrsToList :: (String -> Any -> Any) -> AttrSet -> Any
+  # Clarified: mapAttrsToList :: (String -> a -> b) -> AttrSetOf a -> [b]
   generatedConfig = with lib.attrsets; (concatStringsSep "\n" [
     "global"
     (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
@@ -54,16 +68,18 @@ let
       then "${key} ${value}"
       else (concatStringsSep "\n" (map (x: "${key} ${x}") value))
     )) cfg.defaults)))
-    "# proxies"
+    "#Proxies:"
     (concatStringsSep "\n" (mapAttrsToList (proxyName: proxyData: (
       "${proxyData.section} ${proxyName}\n" +
-      (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
+      (indentWith "  " (concatStringsSep "\n" (lib.lists.flatten (mapAttrsToList (key: value: (
         if key != "section"
-        then (if (typeOf value) == "string"
+        then [(
+          if (typeOf value) == "string"
           then "${key} ${value}"
-          else (concatStringsSep "\n" (map (x: "${key} ${x}") value)))
-        else ""
-      )) proxyData)))
+          else (concatStringsSep "\n" (map (x: "${key} ${x}") value))
+        )]
+        else []
+      )) proxyData))))
     )) cfg.proxies))
   ]);
 
@@ -76,20 +92,20 @@ let
   # is added by the NixOS module automatically.
   oldStatsLine = "stats socket /run/haproxy_admin.sock mode 660 group nogroup level operator";
 
-  importedCfgContent = concatStringsSep "\n" ([generatedConfig] ++ map readFile configFiles);
+  importedCfgContent = concatStringsSep "\n" (map readFile configFiles);
   modifiedCfgContent =
     replaceStrings
       [ oldStatsLine ]
       [ ("# XXX: you can remove this after upgrading to 20.09: " + oldStatsLine) ]
       importedCfgContent;
 
-  haproxyCfgContent =
+  haproxyCfgContent = (
     if importedCfgContent != modifiedCfgContent
     then lib.info
       ("HAProxy: you can remove the 'stats socket' line from your config."
       + " It's ignored on NixOS 20.09.")
-      modifiedCfgContent
-    else importedCfgContent;
+    else lib.id
+    ) (generatedConfig + "\n" + modifiedCfgContent);
 
   example = ''
     # haproxy configuration example - copy to haproxy.cfg and adapt.
@@ -174,8 +190,7 @@ in
       };
 
       services.haproxy.enable = true;
-      services.haproxy.config =
-        seq generatedConfig (if configFiles == [] then generatedConfig else haproxyCfgContent);
+      services.haproxy.config = haproxyCfgContent;
 
       systemd.services.haproxy = {
         reloadIfChanged = true;
