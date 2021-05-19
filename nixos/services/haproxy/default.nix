@@ -3,52 +3,38 @@
 with builtins;
 
 let
-  defaultCfg = { 
-    global = {  
-      daemon = true;  
-      chroot = "/var/empty";  
-      user = "haproxy";  
-      group = "haproxy";  
-      maxconn = "4096";  
-      log = "localhost local2";      
-      "tune.bufsize" = "131072";  
-      "tune.maxrewrite" = "65536";  
-    };  
-    defaults = {  
-      mode = "http";  
-      log = "global";  
-      option = [   
-        "httplog"   
-        "dontlognull"  
-        "http-server-close"  
-      ];  
-      timeout = [  
-        "connect 5s"  
-        "client 10m"  
-        "server 10m"  
-        "queue 25s"  
-      ];  
-      balance = "leastconn";  
-    };  
-    proxies = {  
-      "http-in" = {   
-        section = "listen";  
-        bind = [  
-          "127.0.0.1:8002"  
-          "::1:8002"  
-        ];  
-        default_backend = "be";  
-      };  
-      "be" = {  
-        section = "backend";  
-        server = "localhost localhost:8080";  
-      };  
-    };  
-  };  
+  defaultCfg = {
+    global = {
+      daemon = true;
+      chroot = "/var/empty";
+      user = "haproxy";
+      group = "haproxy";
+      maxconn = "4096";
+      log = "localhost local2";
+      "tune.bufsize" = "131072";
+      "tune.maxrewrite" = "65536";
+    };
+    defaults = {
+      mode = "http";
+      log = "global";
+      option = [
+        "httplog"
+        "dontlognull"
+        "http-server-close"
+      ];
+      timeout = [
+        "connect 5s"
+        "client 10m"
+        "server 10m"
+        "queue 25s"
+      ];
+      balance = "leastconn";
+    };
+  };
   cfg = config.flyingcircus.services.haproxy;
   fclib = config.fclib;
 
-  indentWith = spaces: str: let 
+  indentWith = spaces: str: let
       linesListInterspersed = builtins.split "\n" str;
       lines = filter (x: (typeOf x) != "list") linesListInterspersed;
       indentedLines = map (x: spaces + x) lines;

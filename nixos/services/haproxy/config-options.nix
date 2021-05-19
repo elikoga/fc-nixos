@@ -11,15 +11,15 @@ in {
     };
     type = attrsOf (oneOf [
       bool
-      str 
+      str
     ]);
   };
   defaults = mkOption {
     default = {
       mode = "http";
       log = "global";
-      option = [   
-        "httplog"   
+      option = [
+        "httplog"
         "dontlognull"
         "http-server-close"
       ];
@@ -37,7 +37,7 @@ in {
   };
   proxies = mkOption {
     default = {
-      "http-in" = {   
+      "http-in" = {
         section = "listen";
         bind = [
           "127.0.0.1:8002"
@@ -45,8 +45,8 @@ in {
         ];
         default_backend = "be";
       };
-      "be" = {  
-        section = "backend";  
+      "be" = {
+        section = "backend";
         server = "localhost localhost:8080";
       };
     };
