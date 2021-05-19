@@ -41,7 +41,7 @@ let
       unlines = concatStringsSep "\n" indentedLines;
     in unlines;
 
-changes  # This function is pretty complicated but still readable if you're used to functional programming:
+  # This function is pretty complicated but still readable if you're used to functional programming:
   # concatStringsSep "\n" :: [String] -> String
   # which is effectively `unlines` from Haskell
   # concats strings in list with newlines
