@@ -3,34 +3,6 @@
 with builtins;
 
 let
-  defaultCfg = {
-    global = {
-      daemon = true;
-      chroot = "/var/empty";
-      user = "haproxy";
-      group = "haproxy";
-      maxconn = "4096";
-      log = "localhost local2";
-      "tune.bufsize" = "131072";
-      "tune.maxrewrite" = "65536";
-    };
-    defaults = {
-      mode = "http";
-      log = "global";
-      option = [
-        "httplog"
-        "dontlognull"
-        "http-server-close"
-      ];
-      timeout = [
-        "connect 5s"
-        "client 10m"
-        "server 10m"
-        "queue 25s"
-      ];
-      balance = "leastconn";
-    };
-  };
   cfg = config.flyingcircus.services.haproxy;
   fclib = config.fclib;
 
@@ -55,13 +27,16 @@ let
   # From https://nixos.org/manual/nixpkgs/ :
   # mapAttrsToList :: (String -> Any -> Any) -> AttrSet -> Any
   # Clarified: mapAttrsToList :: (String -> a -> b) -> AttrSetOf a -> [b]
+  #
+  # The invocations of flatten after mapAttrsToList are to emulate
+  # flatMap or (>>=) or Monadic bind in order to avoid generating useless newlines
   generatedConfig = with lib.attrsets; (concatStringsSep "\n" [
     "global"
-    (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
+    (indentWith "  " (concatStringsSep "\n" (lib.lists.flatten (mapAttrsToList (key: value: (
       if (typeOf value) == "bool"
-      then "${key}"
-      else "${key} ${value}"
-    )) cfg.global)))
+      then (if value then ["${key}"] else [])
+      else ["${key} ${value}"]
+    )) cfg.global))))
     "defaults"
     (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
       if (typeOf value) == "string"
@@ -148,9 +123,6 @@ in
   };
 
   config = lib.mkMerge [
-    (lib.mkIf cfg.enable {
-      flyingcircus.services.haproxy = defaultCfg;
-    })
     (lib.mkIf cfg.enable {
 
       environment.etc = {
