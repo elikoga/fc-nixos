@@ -18,7 +18,7 @@ in {
     ./consul.nix
     ./gitlab
     ./graylog
-    ./haproxy.nix
+    ./haproxy
     ./jitsi/jitsi-videobridge.nix
     ./logrotate
     ./nginx

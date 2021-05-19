@@ -3,8 +3,22 @@
 with builtins;
 
 let
-  cfg = config.flyingcircus.services.haproxy;
+  cfg = lib.debug.traceValSeq config.flyingcircus.services.haproxy;
   fclib = config.fclib;
+
+  generatedConfig = lib.debug.traceValSeq (if cfg ? global
+  then with cfg; "global\n" + 
+    (if global ? daemon then "daemon\n" else "") +
+    (if global ? chroot then "chroot ${global.chroot}\n" else "") +
+    (if global ? user && global.group != null then "user ${global.user}" else "") +
+    (if global ? group && global.group != null then "group ${global.group}" else "") +
+    (if global ? maxconn then "maxconn ${toString global.maxconn}\n" else "") +
+    (if global ? log then "log ${global.log.address} ${global.log.facility}\n" else "") +
+    (if global ? tune then with global; (
+      (if tune ? bufsize then "tune.bufsize ${toString tune.bufsize}\n" else "") +
+      (if tune ? maxrewrite then "tune.bumaxrewritefsize ${toString tune.maxrewrite}\n" else "")
+    ) else "")
+  else "");
 
   haproxyCfg = pkgs.writeText "haproxy.conf" config.services.haproxy.config;
 
@@ -64,8 +78,67 @@ let
 
 in
 {
-  options.flyingcircus.services.haproxy = with lib; {
-    enable = mkEnableOption "FC-customized HAproxy";
+  options = with lib; with types; {
+    flyingcircus.services.haproxy = {
+      enable = mkEnableOption "FC-customized HAproxy";
+      global = mkOption {
+        default = {
+          daemon = true;
+          chroot = "/var/empty";
+          maxconn = 4096;
+          log = {
+            address = "localhost";
+            facility = "local2";
+          };
+        };
+        type = submodule {
+          options = {
+            daemon = mkOption {
+              type = bool;
+            };
+            chroot = mkOption {
+              type = path;
+            };
+            user = mkOption {
+              default = null;
+              type = nullOr str;
+            };
+            group = mkOption {
+              default = null;
+              type = nullOr str;
+            };
+            maxconn = mkOption {
+              type = int;
+            };
+            log = mkOption {
+              type = submodule {
+                options = {
+                  address = mkOption {
+                    type = str;
+                  };
+                  facility = mkOption {
+                    type = str;
+                  };
+                };
+              };
+            };
+            tune = mkOption {
+              default = null;
+              type = nullOr (submodule {
+                options = {
+                  bufsize = mkOption {
+                    type = int;
+                  };
+                  maxrewrite = mkOption {
+                    type = int;
+                  };
+                };
+              });
+            };
+          };
+        };
+      };
+    };
   };
 
   config = lib.mkMerge [
@@ -109,7 +182,7 @@ in
 
       services.haproxy.enable = true;
       services.haproxy.config =
-        if configFiles == [] then example else haproxyCfgContent;
+        seq generatedConfig (if configFiles == [] then example else haproxyCfgContent);
 
       systemd.services.haproxy = {
         reloadIfChanged = true;
