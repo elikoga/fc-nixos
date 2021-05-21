@@ -3,60 +3,79 @@
 with builtins;
 
 let
-  cfg = config.flyingcircus.services.haproxy;
+  cfg = lib.debug.traceValSeq config.flyingcircus.services.haproxy;
   fclib = config.fclib;
 
-  indentWith = spaces: str: let
-      linesListInterspersed = builtins.split "\n" str;
-      lines = filter (x: (typeOf x) != "list") linesListInterspersed;
-      indentedLines = map (x: spaces + x) lines;
-      unlines = concatStringsSep "\n" indentedLines;
-    in unlines;
-
-  # This function is pretty complicated but still readable if you're used to functional programming:
-  # concatStringsSep "\n" :: [String] -> String
-  # which is effectively `unlines` from Haskell
-  # concats strings in list with newlines
-  #
-  # indentWith indents a block of text with the first parameter
-  # indentWith :: String -> String -> String
+  # indentWith prepends a list fo strings with the first parameter
+  # indentWith :: String -> [String] -> [String]
   # ```haskell
-  # indentWith spaces = unlines . (spaces ++) . lines
+  # indentWith spaces = map (spaces ++)
   # ```
-  #
-  # From https://nixos.org/manual/nixpkgs/ :
-  # mapAttrsToList :: (String -> Any -> Any) -> AttrSet -> Any
-  # Clarified: mapAttrsToList :: (String -> a -> b) -> AttrSetOf a -> [b]
-  #
-  # The invocations of flatten after mapAttrsToList are to emulate
-  # flatMap or (>>=) or Monadic bind in order to avoid generating useless newlines
-  generatedConfig = with lib.attrsets; (concatStringsSep "\n" [
-    "global"
-    (indentWith "  " (concatStringsSep "\n" (lib.lists.flatten (mapAttrsToList (key: value: (
-      if (typeOf value) == "bool"
-      then (if value then ["${key}"] else [])
-      else ["${key} ${value}"]
-    )) cfg.global))))
-    "defaults"
-    (indentWith "  " (concatStringsSep "\n" (mapAttrsToList (key: value: (
-      if (typeOf value) == "string"
-      then "${key} ${value}"
-      else (concatStringsSep "\n" (map (x: "${key} ${x}") value))
-    )) cfg.defaults)))
-    "#Proxies:"
-    (concatStringsSep "\n" (mapAttrsToList (proxyName: proxyData: (
-      "${proxyData.section} ${proxyName}\n" +
-      (indentWith "  " (concatStringsSep "\n" (lib.lists.flatten (mapAttrsToList (key: value: (
-        if key != "section"
-        then [(
-          if (typeOf value) == "string"
-          then "${key} ${value}"
-          else (concatStringsSep "\n" (map (x: "${key} ${x}") value))
-        )]
-        else []
-      )) proxyData))))
-    )) cfg.proxies))
-  ]);
+  indentWith = spaces: map (x: spaces + x);
+
+  # separates a string into list of lines
+  # lines :: String -> [String]
+  lines = str: lib.trivial.pipe str [
+    (split "\n") # :: String -> [String | [String]]
+    (filter (elem: typeOf elem != "list")) # :: [String | [String]] -> [String]
+  ];
+
+  # concats strings in list with newlines
+  # unlines :: [String] -> String
+  unlines = concatStringsSep "\n";
+
+  # flattens list one layer
+  # join :: [[a]] -> [a]
+  join = foldl' (x: y: x ++ y) [];
+
+  generatedConfig' = with lib; with cfg; (x: trivial.pipe x [ join unlines ]) [
+    (with global; join [
+      ["global"]
+      (indentWith "  " (join [
+        (if global.daemon then ["daemon"] else []) # daemon is already set and won't be shadowed
+        ["chroot ${chroot}"]
+        ["user ${user}"]
+        ["group ${group}"]
+        ["maxconn ${toString maxconn}"]
+        (lines extraOptions)
+      ]))
+    ])
+    (with defaults; join [
+      ["defaults"]
+      (indentWith "  " (join [
+        ["mode ${mode}"]
+        (map (option: "option ${option}" ) options)
+        (join (mapAttrsToList (key: value: if value != null then ["timeout ${key} ${value}"] else []) timeout))
+        (lines extraOptions)
+      ]))
+    ])
+    (join (mapAttrsToList (name: data: ((join [
+      ["listen ${name}"]
+      (indentWith "  " (with data; join [
+        (map (bind: "bind ${bind}" ) binds)
+        ["default_backend ${default_backend}"]
+        (map (server: "server ${server}") servers)
+        (lines extraOptions)
+      ]))
+    ]))) listens))
+    (join (mapAttrsToList (name: data: ((join [
+      ["frontend ${name}"]
+      (indentWith "  " (with data; join [
+        (map (bind: "bind ${bind}" ) binds)
+        ["default_backend ${default_backend}"]
+        (lines extraOptions)
+      ]))
+    ]))) frontends))
+    (join (mapAttrsToList (name: data: ((join [
+      ["backend ${name}"]
+      (indentWith "  " (with data; join [
+        (map (server: "server ${server}") servers)
+        (lines extraOptions)
+      ]))
+    ]))) backends))
+  ];
+
+  generatedConfig = lib.debug.traceValSeq generatedConfig';
 
   haproxyCfg = pkgs.writeText "haproxy.conf" config.services.haproxy.config;
 
