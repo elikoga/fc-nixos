@@ -5,18 +5,54 @@ globalOptions = {
   daemon = mkOption {
     default = true;
     type = bool;
+    description = ''
+      # `daemon`
+      Makes the process fork into background. This is the recommended mode of
+      operation. It is equivalent to the command line "-D" argument. It can be
+      disabled by the command line "-db" argument. This option is ignored in
+      systemd mode.
+    '';
+    example = false;
   };
   chroot = mkOption {
     default = "/var/empty";
     type = str;
+    description = ''
+      # `chroot <jail dir>`
+      Changes current directory to <jail dir> and performs a chroot() there before
+      dropping privileges. This increases the security level in case an unknown
+      vulnerability would be exploited, since it would make it very hard for the
+      attacker to exploit the system. This only works when the process is started
+      with superuser privileges. It is important to ensure that <jail_dir> is both
+      empty and non-writable to anyone.
+    '';
+    example = "/var/lib/haproxy";
   };
   user = mkOption {
     default = "haproxy";
     type = str;
+    description = ''
+      # `user <user name>`
+      Changes the process's user ID to UID of user name <user name> from /etc/passwd.
+      It is recommended that the user ID is dedicated to HAProxy or to a small set
+      of similar daemons. HAProxy must be started with superuser privileges in order
+      to be able to switch to another one.
+    '';
+    example = "hapuser";
   };
   group = mkOption {
     default = "haproxy";
     type = str;
+    description = ''
+      # `group <group name>`
+      Changes the process's group ID to the GID of group name <group name> from
+      /etc/group. It is recommended that the group ID is dedicated to HAProxy
+      or to a small set of similar daemons. HAProxy must be started with a user
+      belonging to this group, or with superuser privileges. Note that if haproxy
+      is started from a user having supplementary groups, it will only be able to
+      drop these groups if started with superuser privileges.
+
+    '';
   };
   maxconn = mkOption {
     default = 4096;
@@ -153,5 +189,9 @@ in {
     type = attrsOf (submodule {
       options = backendOptions;
     });
+  };
+  extraOptions = mkOption {
+    default = "";
+    type = lines;
   };
 }

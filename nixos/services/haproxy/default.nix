@@ -73,6 +73,7 @@ let
         (lines extraOptions)
       ]))
     ]))) backends))
+    (lines extraOptions)
   ];
 
   generatedConfig = lib.debug.traceValSeq generatedConfig';
