@@ -6,6 +6,24 @@ let
   cfg = lib.debug.traceValSeq config.flyingcircus.services.haproxy;
   fclib = config.fclib;
 
+  # last returns the last element of a list or null if the list is empty
+  # last :: [a] -> a
+  last = foldl' (x: y: y) null;
+
+  # dropLast drops the last lement of a list
+  # dropLast :: [a] -> [a]
+  dropLast = list: let
+    listLength = length list;
+    newList = genList (elemAt list) (listLength - 1);
+  in newList;
+
+  # dropLastIfEquals drops the last element of a list
+  # if it is equals to the first parameter
+  # dropLastIfEquals :: Eq a => a -> [a] -> [a]
+  dropLastIfEquals = elem: list: let
+    lastElement = last list;
+  in (if lastElement == elem then dropLast list else list);
+
   # indentWith prepends a list fo strings with the first parameter
   # indentWith :: String -> [String] -> [String]
   # ```haskell
@@ -17,6 +35,7 @@ let
   # lines :: String -> [String]
   lines = str: lib.trivial.pipe str [
     (split "\n") # :: String -> [String | [String]]
+    (dropLastIfEquals "") # :: [String | [String]] -> [String | [String]]
     (filter (elem: typeOf elem != "list")) # :: [String | [String]] -> [String]
   ];
 
