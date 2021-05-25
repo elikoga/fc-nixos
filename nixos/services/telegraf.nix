@@ -8,10 +8,15 @@ with lib;
 
 let
   cfg = config.services.telegraf;
+  fclib = config.fclib;
 
   unifiedConfig = lib.recursiveUpdate
     cfg.extraConfig
     { inputs = config.flyingcircus.services.telegraf.inputs; };
+
+  configFiles = filter (p: lib.hasSuffix ".conf" p) (fclib.files /etc/local/telegraf);
+  configFilesContent = concatStringsSep "\n" (map readFile configFiles);
+
 
   # Copied from nixos/modules/services/monitoring/telegraf.nix.
   # I don't know a better way to get the -config-directory option into ExecStart.
@@ -21,6 +26,10 @@ let
     remarshal -if json -of toml \
       < ${pkgs.writeText "config.json" (builtins.toJSON unifiedConfig)} \
       > $out
+    cat <<EOF >> $out
+    # Config files from /etc/local/telegraf begin here
+    ${configFilesContent}
+    EOF
   '';
 
 in {
@@ -65,7 +74,7 @@ in {
       serviceConfig = {
         ExecStart = mkOverride 90 ''
           ${cfg.package}/bin/telegraf -config "${configFile}" \
-            -config-directory /etc/local/telegraf
+            -config-directory
         '';
         Nice = -10;
       };
