@@ -11,6 +11,8 @@ globalOptions = {
       operation. It is equivalent to the command line "-D" argument. It can be
       disabled by the command line "-db" argument. This option is ignored in
       systemd mode.
+
+      From HAProxy Documentation
     '';
     example = false;
   };
@@ -25,6 +27,8 @@ globalOptions = {
       attacker to exploit the system. This only works when the process is started
       with superuser privileges. It is important to ensure that <jail_dir> is both
       empty and non-writable to anyone.
+
+      From HAProxy Documentation
     '';
     example = "/var/lib/haproxy";
   };
@@ -37,6 +41,8 @@ globalOptions = {
       It is recommended that the user ID is dedicated to HAProxy or to a small set
       of similar daemons. HAProxy must be started with superuser privileges in order
       to be able to switch to another one.
+
+      From HAProxy Documentation
     '';
     example = "hapuser";
   };
@@ -52,11 +58,30 @@ globalOptions = {
       is started from a user having supplementary groups, it will only be able to
       drop these groups if started with superuser privileges.
 
+      From HAProxy Documentation
     '';
   };
   maxconn = mkOption {
     default = 4096;
     type = int;
+    description = ''
+      # `maxconn <number>`
+      Sets the maximum per-process number of concurrent connections to <number>. It
+      is equivalent to the command-line argument "-n". Proxies will stop accepting
+      connections when this limit is reached. The "ulimit-n" parameter is
+      automatically adjusted according to this value. See also "ulimit-n". Note:
+      the "select" poller cannot reliably use more than 1024 file descriptors on
+      some platforms. If your platform only supports select and reports "select
+      FAILED" on startup, you need to reduce maxconn until it works (slightly
+      below 500 in general). If this value is not set, it will automatically be
+      calculated based on the current file descriptors limit reported by the
+      "ulimit -n" command, possibly reduced to a lower value if a memory limit
+      is enforced, based on the buffer size, memory allocated to compression, SSL
+      cache size, and use or not of SSL and the associated maxsslconn (which can
+      also be automatic).
+
+      From HAProxy Documentation
+    '';
   };
   extraOptions = mkOption {
     default = ''
@@ -66,6 +91,9 @@ globalOptions = {
       tune.maxrewrite 65536
     '';
     type = lines;
+    description = ''
+      Additional text appended to global section of haproxy config.
+    '';
   };
 };
 
@@ -73,6 +101,15 @@ defaultsOptions = {
   mode = mkOption {
     default = "http";
     type = enum [ "tcp" "http" "health" ];
+    description = ''
+      # `mode <mode>`
+      Sets the octal mode used to define access permissions on the UNIX socket. It
+      can also be set by default in the global section's "unix-bind" statement.
+      Note that some platforms simply ignore this. This setting is ignored by non
+      UNIX sockets.
+
+      From HAProxy Documentation
+    '';
   };
   options = mkOption {
     default = [
@@ -81,6 +118,9 @@ defaultsOptions = {
       "http-server-close"
     ];
     type = listOf str;
+    description = ''
+      Options in this list are enabled.
+    '';
   };
   timeout = mkOption {
     default = {
@@ -92,17 +132,42 @@ defaultsOptions = {
     type = submodule {
       options = timeoutOptions;
     };
+    description = ''
+      # `timeout <event> <time>`
+      Defines timeouts related to name resolution
+        <event> : the event on which the <time> timeout period applies to.
+                  events available are:
+                  - resolve : default time to trigger name resolutions when no
+                              other time applied.
+                              Default value: 1s
+                  - retry   : time between two DNS queries, when no valid response
+                              have been received.
+                              Default value: 1s
+        <time>  : time related to the event. It follows the HAProxy time format.
+                  <time> is expressed in milliseconds.
+
+      From HAProxy Documentation
+    '';
   };
   extraOptions = mkOption {
     default = ''
       log global
     '';
     type = lines;
+    description = ''
+      Additional text appended to defaults section of haproxy config.
+    '';
   };
 };
 
 timeoutOptions = let
-    timeoutOption = mkOption { default = null; type = nullOr str; };
+    timeoutOption = mkOption {
+      default = null;
+      type = nullOr str;
+      description = ''
+        Timeout for this event.
+      '';
+    };
   in {
     check = timeoutOption;
     client = timeoutOption;
@@ -117,20 +182,44 @@ timeoutOptions = let
     tunnel = timeoutOption;
   };
 
-listenOptions = frontendOptions // backendOptions;
+listenOptions = frontendOptions // backendOptions // {
+  extraOptions = mkOption {
+    default = "";
+    type = lines;
+    description = ''
+      Additional text appended to a listen section of haproxy config.
+    '';
+  };
+};
 
 frontendOptions = {
   binds = mkOption {
     default = [];
     type = listOf str;
+    description = ''
+      # `bind [<address>]:<port_range> [, ...] [param*]`
+      Defines the binding parameters of the local peer of this "peers" section.
+      Such lines are not supported with "peer" line in the same "peers" section.
+
+      From HAProxy Documentation
+    '';
   };
   default_backend = mkOption {
     default = null;
     type = nullOr str;
+    description = ''
+      # `default_backend <backend>`
+      Specify the backend to use when no "use_backend" rule has been matched.
+
+      From HAProxy Documentation
+    '';
   };
   extraOptions = mkOption {
     default = "";
     type = lines;
+    description = ''
+      Additional text appended to a frontend section of haproxy config.
+    '';
   };
 };
 
@@ -138,10 +227,19 @@ backendOptions = {
   servers = mkOption {
     default = [];
     type = listOf str;
+    description = ''
+      # `server <name> <address>[:[port]] [param*]`
+      Declare a server in a backend
+
+      From HAProxy Documentation
+    '';
   };
   extraOptions = mkOption {
     default = "";
     type = lines;
+    description = ''
+      Additional text appended to a backend section of haproxy config.
+    '';
   };
 };
 
@@ -151,12 +249,18 @@ in {
     type = submodule {
       options = globalOptions;
     };
+    description = ''
+      Configuration statements for the global section.
+    '';
   };
   defaults = mkOption {
     default = {};
     type = submodule {
       options = defaultsOptions;
     };
+    description = ''
+      Configuration statements for the defaults section.
+    '';
   };
   listens = mkOption {
     default = {
@@ -171,12 +275,18 @@ in {
     type = attrsOf (submodule {
       options = listenOptions;
     });
+    description = ''
+      Listen sections with statements.
+    '';
   };
   frontends = mkOption {
     default = {};
     type = attrsOf (submodule {
       options = frontendOptions;
     });
+    description = ''
+      Frontend sections with statements.
+    '';
   };
   backends = mkOption {
     default = {
@@ -189,9 +299,15 @@ in {
     type = attrsOf (submodule {
       options = backendOptions;
     });
+    description = ''
+      Backend sections with statements.
+    '';
   };
   extraOptions = mkOption {
     default = "";
     type = lines;
+    description = ''
+      Extra configuration statements to be appended.
+    '';
   };
 }
