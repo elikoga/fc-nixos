@@ -18,8 +18,7 @@ let
   configFilesContent = concatStringsSep "\n" (map readFile configFiles);
 
 
-  # Copied from nixos/modules/services/monitoring/telegraf.nix.
-  # I don't know a better way to get the -config-directory option into ExecStart.
+  # Partially copied from nixos/modules/services/monitoring/telegraf.nix.
   configFile = pkgs.runCommand "config.toml" {
     buildInputs = [ pkgs.remarshal ];
   } ''
@@ -58,8 +57,8 @@ in {
 
     environment.etc."local/telegraf/README.txt".text = ''
       There is a telegraf daemon running on this machine to gather statistics.
-      To gather additional or custom statistis add a proper configuration file
-      here. `*.conf` will beloaded.
+      To gather additional or custom statistics add a proper configuration file
+      here. `*.conf` will be loaded.
 
       See https://github.com/influxdata/telegraf/blob/master/docs/CONFIGURATION.md
       for details on how to configure telegraf.
@@ -73,8 +72,7 @@ in {
     systemd.services.telegraf = {
       serviceConfig = {
         ExecStart = mkOverride 90 ''
-          ${cfg.package}/bin/telegraf -config "${configFile}" \
-            -config-directory
+          ${cfg.package}/bin/telegraf -config "${configFile}"
         '';
         Nice = -10;
       };
